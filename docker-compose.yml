@@ -1,0 +1,30 @@
+services:
+  backend:
+    image: ${QXBAN_BACKEND_IMAGE:-qxbanxiaozhu-backend:latest}
+    platform: ${QXBAN_PLATFORM:-linux/arm64}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        INSTALL_PHOTO_BACKGROUND: ${QXBAN_INSTALL_PHOTO_BACKGROUND:-0}
+    environment:
+      QXBAN_DATA_DIR: /app/data
+      QXBAN_DB_PATH: /app/data/qxban.db
+      QXBAN_PHOTO_TASK_CONCURRENCY: "1"
+      QXBAN_PHOTO_BACKGROUND_ENABLED: ${QXBAN_PHOTO_BACKGROUND_ENABLED:-1}
+      U2NET_HOME: /app/data/rembg_models
+    volumes:
+      - /data/qxbanxiaozhu:/app/data
+    restart: unless-stopped
+
+  frontend:
+    image: ${QXBAN_FRONTEND_IMAGE:-qxbanxiaozhu-frontend:latest}
+    platform: ${QXBAN_PLATFORM:-linux/arm64}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "${QXBAN_HTTP_PORT:-5173}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

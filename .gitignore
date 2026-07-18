@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+
+# PyInstaller build cache
+build/
+*.spec.bak
+
+# Local runtime data
+logs/
+processed_photos/
+class_tagger_config.json
+更新后的学生信息表.xlsx
+更新后的学生名单.xlsx
+u2net.onnx
+
+# Online version local data
+backend/.data/
+.dev-logs/
+data/
+*.db
+*.sqlite
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Temporary render/check artifacts
+docs/manual_render*/
+
+# Folder-style distribution is uploaded as a zip package instead.
+dist/QXBanXiaoZhu-Win10/
+dist/installer/
+dist/docker/
+dist/*.exe
+dist/*.zip
+
+# Editor / OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Desktop-client migration leftovers are not part of the Web repository.
+CHANGELOG.md
+ClassTagger.spec
+QXBanXiaoZhu-Win10.spec
+main.py
+packaging/
+runtime_hooks/
+requirements.txt
+dist/
+docs/软件使用说明.docx
+resources/app_icon.ico
+resources/app_icon.png
+resources/学生籍贯信息表.PDF
+resources/班级座位表.pdf
