@@ -76,6 +76,7 @@ class PhotoBackgroundJobRecord(SQLModel, table=True):
 class UserRecord(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
+    phone: str | None = Field(default=None, unique=True, index=True)
     display_name: str = ""
     password_hash: str
     role: str = "user"
@@ -88,3 +89,17 @@ class LoginSessionRecord(SQLModel, table=True):
     id: str = Field(primary_key=True)
     user_id: int = Field(index=True, foreign_key="userrecord.id")
     expires_at: datetime
+
+
+class RegistrationRequestRecord(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    phone: str = Field(index=True)
+    password_hash: str = Field(exclude=True)
+    status: str = Field(default="pending", index=True)
+    submitted_at: datetime = Field(default_factory=datetime.utcnow)
+    auto_approve_at: datetime = Field(index=True)
+    reviewed_at: datetime | None = None
+    reviewed_by: int | None = Field(default=None, foreign_key="userrecord.id")
+    review_note: str = ""
+    user_id: int | None = Field(default=None, foreign_key="userrecord.id")

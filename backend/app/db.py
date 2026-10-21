@@ -45,10 +45,17 @@ def init_db() -> None:
         for table, column, declaration in (
             ("studentrecord", "source_area", "TEXT NOT NULL DEFAULT ''"),
             ("projectrecord", "owner_id", "INTEGER REFERENCES userrecord(id)"),
+            ("userrecord", "phone", "TEXT"),
         ):
             columns = {row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table})")}
             if column not in columns:
                 connection.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
+
+        connection.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_userrecord_phone ON userrecord(phone)")
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_pending_registration_phone "
+            "ON registrationrequestrecord(phone) WHERE status = 'pending'"
+        )
 
 
 def get_session() -> Generator[Session, None, None]:

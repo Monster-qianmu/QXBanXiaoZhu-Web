@@ -1894,3 +1894,26 @@ a.photo-import-thumb:hover {
 .sticker-preview-card .sticker-lines label span { min-width: 64px; }
 @media (max-width: 900px) { .topbar { flex-wrap: wrap; } .account-add-form, .manual-add-form { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .account-add-form, .manual-add-form { grid-template-columns: 1fr; } .brand-block { min-width: 0; width: 100%; } }
+
+.auth-registration-entry { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 24px; padding-top: 18px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 14px; }
+.auth-registration-entry button { padding: 6px 14px; color: #245cb0; background: #edf4ff; border-color: #c8dbf5; }
+.registration-dialog { max-height: calc(100dvh - 40px); overflow-y: auto; color: #172033; }
+.registration-dialog::backdrop { background: #0f172a66; }
+.registration-dialog-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.registration-dialog-heading h2 { margin: 0; font-size: 23px; }
+.registration-dialog-heading button { min-width: 32px; font-size: 23px; }
+.registration-success h3 { color: #047857; margin: 24px 0 12px; }
+.registration-success .primary-action { width: 100%; margin-top: 12px; }
+.registration-review-panel { padding: 20px; margin: 20px 0; background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 10px; }
+.registration-review-panel .panel-heading { align-items: flex-start; gap: 16px; }
+.registration-review-panel h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.registration-review-panel .pending-badge { border-radius: 20px; padding: 4px 10px; background: #e7effc; color: #245ba7; font-size: 12px; font-weight: 500; }
+.registration-review-panel select { min-height: 36px; padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; }
+.registration-review-panel small { color: #64748b; }
+.registration-review-panel .approve-action { color: #047857; border-color: #a7d7c5; background: #f0faf6; }
+.registration-status { display: inline-block; padding: 4px 9px; border-radius: 20px; white-space: nowrap; font-size: 13px; }
+.registration-status.pending { color: #9a5c00; background: #fff3d4; }
+.registration-status.approved { color: #047857; background: #dcf5eb; }
+.registration-status.rejected { color: #b42318; background: #ffe9e7; }
+.registration-dialog textarea { min-height: 100px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; resize: vertical; }
+@media (max-width: 700px) { .registration-review-panel { padding: 14px; } .registration-review-panel .panel-heading { flex-wrap: wrap; } }

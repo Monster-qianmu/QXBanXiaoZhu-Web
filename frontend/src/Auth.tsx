@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { request } from "./api";
 import type { User } from "./types";
+import { RegistrationDialog, RegistrationRequestsPanel } from "./Registration";
 
 type AuthActions = { user: User; logout: () => void; changePassword: () => void };
 
@@ -11,6 +12,7 @@ export function AuthGate({ children }: { children: (actions: AuthActions) => Rea
   const [ready, setReady] = useState(false);
   const [setup, setSetup] = useState(false);
   const [editingPassword, setEditingPassword] = useState(false);
+  const [showRegistration, setShowRegistration] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [credentials, setCredentials] = useState({ username: "", display_name: "", password: "", confirm: "" });
@@ -49,13 +51,18 @@ export function AuthGate({ children }: { children: (actions: AuthActions) => Rea
       } catch (failure) { setError((failure as Error).message); }
       finally { setBusy(false); }
     }}>
-      <label>账号<input required autoComplete="username" minLength={3} maxLength={64} value={credentials.username} onChange={(event) => setCredentials({ ...credentials, username: event.currentTarget.value })} /></label>
+      <label>{setup ? "账号" : "账号 / 手机号"}<input required autoComplete="username" minLength={3} maxLength={64} value={credentials.username} onChange={(event) => setCredentials({ ...credentials, username: event.currentTarget.value })} /></label>
       {setup && <label>显示姓名<input maxLength={100} autoComplete="name" value={credentials.display_name} onChange={(event) => setCredentials({ ...credentials, display_name: event.currentTarget.value })} /></label>}
       <label>密码<input required type="password" minLength={setup ? 8 : 1} maxLength={128} autoComplete={setup ? "new-password" : "current-password"} value={credentials.password} onChange={(event) => setCredentials({ ...credentials, password: event.currentTarget.value })} /></label>
       {setup && <label>确认密码<input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={credentials.confirm} onChange={(event) => setCredentials({ ...credentials, confirm: event.currentTarget.value })} /></label>}
       {error && <div role="alert" className="auth-error">{error}</div>}
       <button className="primary-action" disabled={busy}>{busy ? "处理中…" : setup ? "创建管理员并进入系统" : "登录"}</button>
-    </form><small>{setup ? "账号支持字母、数字及 _ . @ -，密码至少 8 位。" : "普通用户账号由管理员创建；忘记密码请联系管理员。"}</small>
+    </form><small>{setup ? "账号支持字母、数字及 _ . @ -，密码至少 8 位。" : "可使用账号或审核通过的手机号登录；忘记密码请联系管理员。"}</small>
+    {!setup && <div className="auth-registration-entry"><span>还没有账号？</span><button type="button" className="text-button" onClick={() => setShowRegistration(true)}>添加账号</button></div>}
+    {showRegistration && <RegistrationDialog onClose={(phone) => {
+      if (phone) setCredentials((current) => ({ ...current, username: phone, password: "" }));
+      setShowRegistration(false); setError("");
+    }} />}
   </section></main>;
 }
 
@@ -96,6 +103,7 @@ export function AccountsPage() {
       const data = new FormData(); data.append("file", file);
       void run(() => request("/admin/users/import", { method: "POST", body: data }), "账号表已成功导入");
     }} /></label></div></div>
+    <RegistrationRequestsPanel />
     <form className="account-add-form" onSubmit={(event) => { event.preventDefault(); void run(() => request("/admin/users", { method: "POST", body: JSON.stringify(form) }), "普通用户已创建，首次登录须修改密码", () => setForm({ username: "", display_name: "", password: "" })); }}>
       <label>账号<input required aria-label="新用户账号" minLength={3} maxLength={64} value={form.username} onChange={(event) => setForm({ ...form, username: event.currentTarget.value })} /></label>
       <label>姓名<input aria-label="新用户姓名" maxLength={100} value={form.display_name} onChange={(event) => setForm({ ...form, display_name: event.currentTarget.value })} /></label>

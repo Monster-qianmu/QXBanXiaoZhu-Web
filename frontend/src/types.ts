@@ -126,6 +126,7 @@ export type TabKey = "students" | "seats" | "dorms" | "stickers" | "photos";
 export type User = {
   id: number;
   username: string;
+  phone: string | null;
   display_name: string;
   role: "admin" | "user";
   is_active: boolean;

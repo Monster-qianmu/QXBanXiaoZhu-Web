@@ -56,6 +56,8 @@ def test_backend_main_flow(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setattr(backend_main, "start_photo_background_worker", lambda: None)
     monkeypatch.setattr(backend_main, "stop_photo_background_worker", lambda: None)
+    monkeypatch.setattr(backend_main, "start_registration_worker", lambda: None)
+    monkeypatch.setattr(backend_main, "stop_registration_worker", lambda: None)
     monkeypatch.setattr(backend_main, "photo_background_warmup_state", lambda: {"status": "ready", "error": ""})
     app = backend_main.app
 

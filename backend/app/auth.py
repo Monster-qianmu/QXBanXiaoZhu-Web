@@ -18,11 +18,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from .db import get_session
-from .models import LoginSessionRecord, ProjectRecord, UserRecord
+from .models import LoginSessionRecord, ProjectRecord, RegistrationRequestRecord, UserRecord
+from .registration import approve_due_registrations, normalize_phone
 
 router = APIRouter(prefix="/api/v1")
 COOKIE_NAME = "qxban_session"
-PUBLIC_PATHS = {"/api/v1/health", "/api/v1/auth/status", "/api/v1/auth/setup", "/api/v1/auth/login"}
+PUBLIC_PATHS = {"/api/v1/health", "/api/v1/auth/status", "/api/v1/auth/setup", "/api/v1/auth/login", "/api/v1/auth/registration-requests"}
 _attempts: dict[str, deque] = defaultdict(deque)
 _attempt_lock = threading.Lock()
 
@@ -50,7 +51,7 @@ class UserPatch(BaseModel):
 
 
 def user_out(user: UserRecord) -> dict:
-    return {key: getattr(user, key) for key in ("id", "username", "display_name", "role", "is_active", "must_change_password", "created_at")}
+    return {key: getattr(user, key) for key in ("id", "username", "phone", "display_name", "role", "is_active", "must_change_password", "created_at")}
 
 
 def normalize_username(value: str) -> str:
@@ -155,7 +156,12 @@ def setup(payload: CreateUser, response: Response, request: Request, session: Se
 
 @router.post("/auth/login")
 def login(payload: Credentials, response: Response, request: Request, session: Session = Depends(get_session)):
-    key = (request.client.host if request.client else "unknown") + ":" + payload.username.strip().lower()
+    login_name = payload.username.strip().lower()
+    try:
+        login_name = normalize_phone(login_name)
+    except ValueError:
+        pass
+    key = (request.client.host if request.client else "unknown") + ":" + login_name
     with _attempt_lock:
         now = time.monotonic()
         attempts = _attempts[key]
@@ -164,7 +170,17 @@ def login(payload: Credentials, response: Response, request: Request, session: S
         if len(attempts) >= 10:
             raise HTTPException(429, "尝试次数过多，请 5 分钟后再试")
         attempts.append(now)
-    user = session.exec(select(UserRecord).where(UserRecord.username == payload.username.strip().lower())).first()
+    approve_due_registrations()
+    user = session.exec(select(UserRecord).where(UserRecord.username == login_name)).first()
+    if user is None:
+        application = session.exec(select(RegistrationRequestRecord).where(
+            RegistrationRequestRecord.phone == login_name,
+            RegistrationRequestRecord.status.in_(["pending", "rejected"]),
+        ).order_by(RegistrationRequestRecord.id.desc())).first()
+        if application is not None and verify_password(payload.password, application.password_hash):
+            if application.status == "pending":
+                raise HTTPException(403, "账号申请正在等待管理员审批，提交满 24 小时未处理将自动同意")
+            raise HTTPException(403, f"账号申请未通过：{application.review_note}，可修改信息后重新申请")
     if user is None or not verify_password(payload.password, user.password_hash) or not user.is_active:
         raise HTTPException(401, "账号或密码错误，或账号已停用")
     with _attempt_lock:

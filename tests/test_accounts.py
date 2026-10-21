@@ -28,6 +28,8 @@ def isolated_app(tmp_path, monkeypatch):
     reset_engine_for_tests()
     monkeypatch.setattr(main, 'start_photo_background_worker', lambda: None)
     monkeypatch.setattr(main, 'stop_photo_background_worker', lambda: None)
+    monkeypatch.setattr(main, 'start_registration_worker', lambda: None)
+    monkeypatch.setattr(main, 'stop_registration_worker', lambda: None)
     try:
         with TestClient(main.app) as client:
             yield client, main.app

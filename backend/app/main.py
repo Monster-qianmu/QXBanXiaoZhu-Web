@@ -38,6 +38,8 @@ from qx_core.photos import (
 )
 
 from .auth import authorize_request, router as auth_router
+from .registration import start_registration_worker, stop_registration_worker
+from .registration_routes import router as registration_router
 from .config import ensure_data_dirs, get_settings
 from .db import get_session, init_db
 from .files import absolute_path, create_file_record, register_export, save_upload_file
@@ -81,15 +83,18 @@ async def lifespan(_app: FastAPI):
     ensure_data_dirs()
     init_db()
     start_photo_background_worker()
+    start_registration_worker()
     try:
         yield
     finally:
+        stop_registration_worker()
         stop_photo_background_worker()
 
 
 app = FastAPI(title="QX班小助 API", version="0.2.0", lifespan=lifespan,
               dependencies=[Depends(authorize_request)], docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(auth_router)
+app.include_router(registration_router)
 
 DORM_ROSTER_FILE_KINDS = ("dorm_excel", "dorm_roster")
 
