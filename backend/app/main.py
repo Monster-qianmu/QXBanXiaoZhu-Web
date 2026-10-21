@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from PIL import Image, UnidentifiedImageError
 from sqlmodel import Session, select
@@ -38,6 +37,7 @@ from qx_core.photos import (
     photo_sequence_summary,
 )
 
+from .auth import authorize_request, router as auth_router
 from .config import ensure_data_dirs, get_settings
 from .db import get_session, init_db
 from .files import absolute_path, create_file_record, register_export, save_upload_file
@@ -87,21 +87,17 @@ async def lifespan(_app: FastAPI):
         stop_photo_background_worker()
 
 
-app = FastAPI(title="QX班小助 API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="QX班小助 API", version="0.2.0", lifespan=lifespan,
+              dependencies=[Depends(authorize_request)], docs_url=None, redoc_url=None, openapi_url=None)
+app.include_router(auth_router)
 
 DORM_ROSTER_FILE_KINDS = ("dorm_excel", "dorm_roster")
 
 
 def get_project_or_404(session: Session, project_id: int) -> ProjectRecord:
     project = session.get(ProjectRecord, project_id)
-    if project is None:
+    user = session.info.get("user")
+    if project is None or (user and user.role != "admin" and project.owner_id != user.id):
         raise HTTPException(status_code=404, detail="项目不存在")
     return project
 
@@ -116,6 +112,7 @@ def student_to_core(record: StudentRecord) -> Student:
         index=record.student_index,
         name=record.name,
         hometown=record.hometown,
+        source_area=record.source_area,
         class_name=record.class_name,
         photo_path=photo_path if photo_path and photo_path.exists() else None,
         photo_match_status=record.photo_match_status,
@@ -137,6 +134,7 @@ def student_to_out(record: StudentRecord, session: Session) -> StudentOut:
         index=record.student_index,
         name=record.name,
         hometown=record.hometown,
+        source_area=record.source_area,
         class_name=record.class_name,
         photo_match_status=record.photo_match_status,
         photo_url=photo_url,
@@ -256,6 +254,7 @@ def student_report_row(student: StudentRecord) -> dict[str, object]:
         "index": student.student_index,
         "name": student.name,
         "hometown": student.hometown,
+        "source_area": student.source_area,
         "class_name": student.class_name,
         "photo_path": student.photo_path,
         "photo_match_status": student.photo_match_status,
@@ -450,7 +449,7 @@ def health() -> dict:
 
 @app.post("/api/v1/projects", response_model=ProjectOut)
 def create_project(payload: ProjectCreate, session: Session = Depends(get_session)) -> ProjectRecord:
-    project = ProjectRecord(name=payload.name.strip() or "新班级项目")
+    project = ProjectRecord(name=payload.name.strip() or "新班级项目", owner_id=session.info["user"].id)
     session.add(project)
     session.commit()
     session.refresh(project)
@@ -461,7 +460,11 @@ def create_project(payload: ProjectCreate, session: Session = Depends(get_sessio
 
 @app.get("/api/v1/projects", response_model=list[ProjectOut])
 def list_projects(session: Session = Depends(get_session)) -> list[ProjectRecord]:
-    return list(session.exec(select(ProjectRecord).order_by(ProjectRecord.created_at.desc())))
+    query = select(ProjectRecord).order_by(ProjectRecord.created_at.desc())
+    user = session.info["user"]
+    if user.role != "admin":
+        query = query.where(ProjectRecord.owner_id == user.id)
+    return list(session.exec(query))
 
 
 @app.get("/api/v1/projects/{project_id}", response_model=ProjectOut)
@@ -515,7 +518,12 @@ def import_students_excel(project_id: int, file: UploadFile = File(...), session
     project = get_project_or_404(session, project_id)
     upload_record = save_upload_file(session, file, project_id, "student_excel", {".xlsx", ".xlsm"})
     excel_path = absolute_path(upload_record.path)
-    students = load_students_from_excel(excel_path)
+    try:
+        students = load_students_from_excel(excel_path)
+    except Exception:
+        raise HTTPException(400, "学生表无法读取，请使用 Excel 样表")
+    if not students:
+        raise HTTPException(400, "学生表中没有有效学生，原有名单已保留")
     clear_project_students(session, project_id)
     for student in students:
         session.add(
@@ -524,6 +532,7 @@ def import_students_excel(project_id: int, file: UploadFile = File(...), session
                 student_index=student.index,
                 name=student.name,
                 hometown=student.hometown,
+                source_area=student.source_area,
                 class_name=project.name,
             )
         )
@@ -554,6 +563,7 @@ def create_student(project_id: int, payload: StudentCreate, session: Session = D
         student_index=next_index,
         name=name,
         hometown=payload.hometown.strip(),
+        source_area=payload.source_area.strip(),
         class_name=project.name,
     )
     session.add(record)
@@ -577,6 +587,8 @@ def patch_student(project_id: int, student_id: int, payload: StudentPatch, sessi
         record.name = name
     if payload.hometown is not None:
         record.hometown = payload.hometown.strip()
+    if payload.source_area is not None:
+        record.source_area = payload.source_area.strip()
     if payload.class_name is not None:
         record.class_name = project.name
     session.add(record)
@@ -1055,6 +1067,10 @@ def download_file(file_id: str, session: Session = Depends(get_session)) -> File
     record = session.get(FileRecord, file_id)
     if record is None:
         raise HTTPException(status_code=404, detail="文件不存在")
+    if record.project_id is not None:
+        get_project_or_404(session, record.project_id)
+    elif session.info["user"].role != "admin":
+        raise HTTPException(404, detail="文件不存在")
     path = absolute_path(record.path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="文件已不存在")

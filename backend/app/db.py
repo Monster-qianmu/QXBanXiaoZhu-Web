@@ -40,6 +40,15 @@ def init_db() -> None:
     from . import models  # noqa: F401
 
     SQLModel.metadata.create_all(get_engine())
+    # Additive migrations preserve existing students, classes and arrangements.
+    with get_engine().begin() as connection:
+        for table, column, declaration in (
+            ("studentrecord", "source_area", "TEXT NOT NULL DEFAULT ''"),
+            ("projectrecord", "owner_id", "INTEGER REFERENCES userrecord(id)"),
+        ):
+            columns = {row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table})")}
+            if column not in columns:
+                connection.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
 
 
 def get_session() -> Generator[Session, None, None]:

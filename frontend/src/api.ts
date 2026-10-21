@@ -2,14 +2,18 @@ import type { Activity, DormRoom, FileResult, HealthStatus, PhotoBackgroundJob, 
 
 const API_PREFIX = "/api/v1";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_PREFIX}${path}`, {
     headers: init?.body instanceof FormData ? undefined : { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...init
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(body.detail || response.statusText);
+    if (response.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event("qxban-auth-expired"));
+    const detail = body.detail;
+    const message = typeof detail === "string" ? detail : detail?.errors ? `${detail.message}：${detail.errors.map((item: { row: number; message: string }) => `第 ${item.row} 行 ${item.message}`).join("；")}` : Array.isArray(detail) ? "请检查输入内容" : response.statusText;
+    throw new Error(message);
   }
   return response.json() as Promise<T>;
 }
@@ -30,7 +34,7 @@ export const api = {
       body: JSON.stringify({ name })
     }),
   students: (projectId: number) => request<Student[]>(`/projects/${projectId}/students`),
-  createStudent: (projectId: number, student: Pick<Student, "name" | "hometown" | "class_name">) =>
+  createStudent: (projectId: number, student: Pick<Student, "name" | "hometown" | "class_name" | "source_area">) =>
     request<Student>(`/projects/${projectId}/students`, {
       method: "POST",
       body: JSON.stringify(student)
@@ -43,7 +47,7 @@ export const api = {
       body: form
     });
   },
-  patchStudent: (projectId: number, studentId: number, patch: Partial<Pick<Student, "name" | "hometown" | "class_name">>) =>
+  patchStudent: (projectId: number, studentId: number, patch: Partial<Pick<Student, "name" | "hometown" | "class_name" | "source_area">>) =>
     request<Student>(`/projects/${projectId}/students/${studentId}`, {
       method: "PATCH",
       body: JSON.stringify(patch)

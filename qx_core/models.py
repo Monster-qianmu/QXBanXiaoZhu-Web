@@ -14,6 +14,7 @@ class Student:
     original_index: int | None = None
     class_name: str = ""
     dorm_key: str = ""
+    source_area: str = ""
 
 
 @dataclass

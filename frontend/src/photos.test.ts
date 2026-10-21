@@ -256,6 +256,7 @@ describe("photo roster coverage helpers", () => {
       name: "张三",
       hometown: "广州",
       class_name: "一班",
+      source_area: "",
       photo_match_status: "strict",
       photo_url: "/api/v1/files/file-1/download"
     },
@@ -265,6 +266,7 @@ describe("photo roster coverage helpers", () => {
       name: "李四",
       hometown: "深圳",
       class_name: "一班",
+      source_area: "",
       photo_match_status: "missing"
     },
     {
@@ -273,6 +275,7 @@ describe("photo roster coverage helpers", () => {
       name: "王五",
       hometown: "佛山",
       class_name: "一班",
+      source_area: "",
       photo_match_status: "manual",
       photo_url: "/api/v1/files/file-3/download"
     }

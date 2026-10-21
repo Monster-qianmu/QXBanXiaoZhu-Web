@@ -17,10 +17,10 @@ def load_students_from_excel(path: Path) -> list[Student]:
     students: list[Student] = []
 
     for row in sheet.iter_rows(min_row=1, values_only=True):
-        if not row or all(cell is None for cell in row[:4]):
+        if not row or all(cell is None for cell in row[:5]):
             continue
 
-        raw_index, raw_name, raw_hometown, raw_class = (list(row) + [None, None, None, None])[:4]
+        raw_index, raw_name, raw_hometown, raw_class, raw_area = (list(row) + [None] * 5)[:5]
         if str(raw_index).strip() in {"序号", "编号"}:
             continue
 
@@ -35,7 +35,7 @@ def load_students_from_excel(path: Path) -> list[Student]:
 
         hometown = "" if raw_hometown is None else str(raw_hometown).strip()
         class_name = "" if raw_class is None else str(raw_class).strip()
-        students.append(Student(index=index, name=name, hometown=hometown, original_index=index, class_name=class_name))
+        students.append(Student(index=index, name=name, hometown=hometown, original_index=index, class_name=class_name, source_area=str(raw_area or "").strip()))
 
     return students
 
@@ -125,9 +125,9 @@ def export_students_to_excel(path: Path, students: list[Student]) -> None:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "学生信息"
-    sheet.append(["序号", "姓名", "籍贯", "班级"])
+    sheet.append(["序号", "姓名", "籍贯", "班级", "送生区"])
     for student in students:
-        sheet.append([student.index, student.name, student.hometown, student.class_name])
+        sheet.append([student.index, student.name, student.hometown, student.class_name, student.source_area])
     workbook.save(path)
 
 
@@ -141,13 +141,13 @@ def export_dorm_roster_to_excel(
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "宿舍安排表"
-    sheet.merge_cells("A1:D1")
+    sheet.merge_cells("A1:E1")
     sheet["A1"] = title
     sheet["A1"].font = Font(name="宋体", size=22, bold=True)
     sheet["A1"].alignment = Alignment(horizontal="center", vertical="center")
     sheet.row_dimensions[1].height = 38
 
-    headers = ["宿舍号", "床号", "姓名", "籍贯"]
+    headers = ["宿舍号", "床号", "姓名", "籍贯", "送生区"]
     sheet.append(headers)
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -170,7 +170,8 @@ def export_dorm_roster_to_excel(
             sheet.cell(current_row, 2, f"{bed_index:02d}")
             sheet.cell(current_row, 3, student.name if student else "")
             sheet.cell(current_row, 4, student.hometown if student else "")
-            for column in range(1, 5):
+            sheet.cell(current_row, 5, student.source_area if student else "")
+            for column in range(1, 6):
                 cell = sheet.cell(current_row, column)
                 cell.font = Font(name="宋体", size=13)
                 cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -189,13 +190,14 @@ def export_dorm_roster_to_excel(
     sheet.column_dimensions["B"].width = 12
     sheet.column_dimensions["C"].width = 22
     sheet.column_dimensions["D"].width = 26
-    for row in sheet.iter_rows(min_row=1, max_row=max(2, current_row - 1), min_col=1, max_col=4):
+    sheet.column_dimensions["E"].width = 22
+    for row in sheet.iter_rows(min_row=1, max_row=max(2, current_row - 1), min_col=1, max_col=5):
         for cell in row:
             cell.border = border
     workbook.save(path)
 
 
-PHOTO_COVERAGE_HEADERS = ["序号", "姓名", "籍贯", "班级", "照片状态", "匹配方式"]
+PHOTO_COVERAGE_HEADERS = ["序号", "姓名", "籍贯", "班级", "照片状态", "匹配方式", "送生区"]
 PHOTO_MATCH_STATUS_LABELS = {
     "strict": "精确",
     "fuzzy": "模糊",
@@ -225,6 +227,7 @@ def photo_coverage_row(student: Mapping[str, object], translate_match_status: bo
         student.get("class_name") or "",
         "已绑定" if has_photo else "缺照片",
         match_status,
+        student.get("source_area") or "",
     ]
 
 
@@ -264,7 +267,7 @@ def write_photo_coverage_table(
     for row_index, student in enumerate(students, start=header_row + 1):
         for column, value in enumerate(photo_coverage_row(student, translate_match_status), start=1):
             sheet.cell(row_index, column, value)
-    style_photo_table(sheet, header_row, header_fill, border, [10, 16, 20, 18, 12, 14])
+    style_photo_table(sheet, header_row, header_fill, border, [10, 16, 20, 18, 12, 14, 22])
 
 
 def write_missing_photo_sheet(
@@ -274,7 +277,7 @@ def write_missing_photo_sheet(
     border: Border,
 ) -> None:
     missing_sheet = workbook.create_sheet("缺照片学生")
-    missing_headers = PHOTO_COVERAGE_HEADERS[:4]
+    missing_headers = PHOTO_COVERAGE_HEADERS[:4] + ["送生区"]
     for column, header in enumerate(missing_headers, start=1):
         missing_sheet.cell(1, column, header)
     missing_row = 2
@@ -286,11 +289,12 @@ def write_missing_photo_sheet(
             student.get("name") or "",
             student.get("hometown") or "",
             student.get("class_name") or "",
+            student.get("source_area") or "",
         ]
         for column, value in enumerate(values, start=1):
             missing_sheet.cell(missing_row, column, value)
         missing_row += 1
-    style_photo_table(missing_sheet, 1, header_fill, border, [10, 16, 20, 18])
+    style_photo_table(missing_sheet, 1, header_fill, border, [10, 16, 20, 18, 22])
 
 
 def student_index_value(student: Mapping[str, object]) -> int | None:
@@ -311,7 +315,7 @@ def write_photo_sequence_gap_sheet(
     border: Border,
 ) -> None:
     sheet = workbook.create_sheet("文件序号缺口")
-    headers = ["缺失序号", "名单学生", "学生ID", "籍贯", "班级", "照片状态", "匹配方式"]
+    headers = ["缺失序号", "名单学生", "学生ID", "籍贯", "班级", "照片状态", "匹配方式", "送生区"]
     for column, header in enumerate(headers, start=1):
         sheet.cell(1, column, header)
 
@@ -331,10 +335,11 @@ def write_photo_sequence_gap_sheet(
             student.get("class_name") if student else "",
             "已绑定" if has_photo else "缺照片" if student else "名单无此序号",
             photo_match_status_label(student.get("photo_match_status")) if student else "",
+            student.get("source_area") if student else "",
         ]
         for column, value in enumerate(values, start=1):
             sheet.cell(row_index, column, value)
-    style_photo_table(sheet, 1, header_fill, border, [10, 16, 12, 20, 18, 12, 14])
+    style_photo_table(sheet, 1, header_fill, border, [10, 16, 12, 20, 18, 12, 14, 22])
 
 
 def write_photo_image_summary_sheet(
@@ -494,7 +499,7 @@ def export_photo_status_report_to_excel(path: Path, students: list[Mapping[str, 
     sheet = workbook.active
     sheet.title = "照片状态清单"
 
-    sheet.merge_cells("A1:F1")
+    sheet.merge_cells("A1:G1")
     sheet["A1"] = "学生照片状态清单"
     sheet["A1"].font = Font(name="宋体", size=18, bold=True)
     sheet["A1"].alignment = Alignment(horizontal="center", vertical="center")

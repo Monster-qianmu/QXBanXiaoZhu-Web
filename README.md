@@ -10,7 +10,8 @@
 
 ## 主要功能
 
-- 导入和维护学生信息，下载 Excel 样表。
+- 导入和维护学生信息（序号、姓名、籍贯、班级、送生区），下载 Excel 样表；兼容旧四列表格。
+- 管理员创建和批量导入普通用户、重置密码、启用或停用账号。普通用户管理自己的班级，管理员可管理全部班级。
 - 可视化编辑与导出横向 A4 班级座位表。
 - 管理宿舍、床位和学生照片，导出宿舍门牌贴及床柜贴。
 - 批量导入照片并按学生信息匹配；支持裁剪、缩放和绑定。
@@ -25,11 +26,11 @@ mkdir -p /data/qxbanxiaozhu
 docker compose up -d --build
 ```
 
-默认从宿主机 `5173` 端口访问，数据保存在 `/data/qxbanxiaozhu`。可用以下命令查看服务状态：
+默认从宿主机 `8080` 端口访问，数据保存在 `/data/qxbanxiaozhu`。可用以下命令查看服务状态：
 
 ```bash
 docker compose ps
-curl http://127.0.0.1:5173/api/v1/health
+curl http://127.0.0.1:8080/api/v1/health
 ```
 
 基础镜像默认不包含蓝底抠图依赖。需要在容器中启用时：
@@ -39,6 +40,41 @@ QXBAN_INSTALL_PHOTO_BACKGROUND=1 docker compose up -d --build
 ```
 
 启用后，模型文件会缓存到数据目录。服务启动后会在后台预热模型；界面会显示预热或就绪状态，蓝底作业会等待预热完成后依次执行。
+
+## 首次登录与账号管理
+
+首次打开网页时设置管理员账号和密码，没有内置默认密码。账号为 3–64 位字母、数字或 `_ . @ -`，密码为 8–128 个字符。已有数据库会自动增加新字段，保留原数据；首次设置的管理员接管历史班级。
+
+管理员进入“账号管理”后，可以：
+
+- 添加普通用户，设置姓名和初始密码。
+- 下载账号样表，按“账号、姓名、初始密码”三列填写 `.xlsx` 后导入，每批最多 500 人。有无效行或重复账号时整批不写入，并提示错误行号。
+- 重置普通用户密码，或启用、停用账号。重置密码和停用账号会使该用户的已有登录立即失效。
+
+普通用户首次登录或密码被重置后，须修改初始密码才能使用系统。账号密码仅保存带盐的 scrypt 摘要；登录通过 HttpOnly、SameSite Cookie 保持，最长 12 小时。各用户只能操作自己的班级及关联照片、导出文件，管理员可访问全部班级。个人密码可在顶部“修改密码”中更改。
+
+学生信息表第五列为“送生区”，可以在学生表格、宿舍贴预览中修改。学生 Excel、宿舍名单、照片核对报表和两种宿舍贴 PDF 均包含该字段。旧四列表格导入时送生区为空。
+
+## 当前 Mac 的本地部署
+
+`docker-compose.local.yml` 使用独立命名卷和当前 Mac 已有的基础镜像，不影响其他部署。先构建前端，再启动：
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run build
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+入口为 `http://127.0.0.1:8080/`，默认向局域网监听 8080。可通过 `QXBAN_BIND_ADDRESS=127.0.0.1` 仅监听本机，或通过 `QXBAN_HTTP_PORT` 更改端口。数据库和照片保存在项目专用 Docker 命名卷中，容器重建不会删除数据。蓝底抠图沿用本机基础镜像配置，默认关闭。
+
+```bash
+docker compose -f docker-compose.local.yml ps
+docker compose -f docker-compose.local.yml logs --tail=100
+# 停止并保留数据
+docker compose -f docker-compose.local.yml down
+```
+
+`Dockerfile.local` 基于本机已有的 `qxbanxiaozhu-local-backend:latest` / `qxbanxiaozhu-local-frontend:latest`，并复制本仓库的新代码和前端产物。在其他机器上请使用上文的标准 `docker-compose.yml` 从 Python/Node 基础镜像构建。
 
 ## 本地开发
 

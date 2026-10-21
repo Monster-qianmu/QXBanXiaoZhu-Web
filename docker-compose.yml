@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     ports:
-      - "${QXBAN_HTTP_PORT:-5173}:80"
+      - "${QXBAN_BIND_ADDRESS:-0.0.0.0}:${QXBAN_HTTP_PORT:-8080}:80"
     depends_on:
       - backend
     restart: unless-stopped

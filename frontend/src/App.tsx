@@ -24,6 +24,8 @@ import {
   Upload
 } from "lucide-react";
 import { api, openDownload } from "./api";
+import { AuthGate, AccountsPage } from "./Auth";
+import type { User } from "./types";
 import { isHighlightedActivity, resumablePhotoBackgroundJobId } from "./activities";
 import {
   assignedStudentIdsForRooms,
@@ -251,11 +253,11 @@ function ClassSelector({
 
 function StudentsPage({ projectId, className, onStatus }: { projectId: number; className: string; onStatus: (value: string) => void }) {
   const queryClient = useQueryClient();
-  const [newStudent, setNewStudent] = useState({ name: "", hometown: "", class_name: className });
+  const [newStudent, setNewStudent] = useState({ name: "", hometown: "", class_name: className, source_area: "" });
   const studentsQuery = useQuery({ queryKey: ["students", projectId], queryFn: () => api.students(projectId) });
 
   useEffect(() => {
-    setNewStudent({ name: "", hometown: "", class_name: className });
+    setNewStudent({ name: "", hometown: "", class_name: className, source_area: "" });
   }, [projectId, className]);
 
   const importMutation = useMutation({
@@ -270,7 +272,7 @@ function StudentsPage({ projectId, className, onStatus }: { projectId: number; c
   const createMutation = useMutation({
     mutationFn: () => api.createStudent(projectId, { ...newStudent, class_name: className }),
     onSuccess: (student) => {
-      setNewStudent({ name: "", hometown: "", class_name: className });
+      setNewStudent({ name: "", hometown: "", class_name: className, source_area: "" });
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
       queryClient.invalidateQueries({ queryKey: ["seats", projectId] });
       queryClient.invalidateQueries({ queryKey: ["dorms", projectId] });
@@ -290,7 +292,7 @@ function StudentsPage({ projectId, className, onStatus }: { projectId: number; c
     onError: (error) => onStatus(error.message)
   });
   const patchMutation = useMutation({
-    mutationFn: ({ student, patch }: { student: Student; patch: Partial<Pick<Student, "name" | "hometown" | "class_name">> }) =>
+    mutationFn: ({ student, patch }: { student: Student; patch: Partial<Pick<Student, "name" | "hometown" | "class_name" | "source_area">> }) =>
       api.patchStudent(projectId, student.id, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
@@ -423,6 +425,11 @@ function StudentsPage({ projectId, className, onStatus }: { projectId: number; c
             value={newStudent.class_name}
             readOnly
           />
+          <input aria-label="学生送生区" data-testid="new-student-source-area" placeholder="送生区"
+            value={newStudent.source_area} onChange={(event) => {
+              const value = event.currentTarget.value;
+              setNewStudent((current) => ({ ...current, source_area: value }));
+            }} />
           <button
             className="primary-action add-student-action"
             data-testid="new-student-submit"
@@ -441,6 +448,7 @@ function StudentsPage({ projectId, className, onStatus }: { projectId: number; c
                 <th>姓名</th>
                 <th>籍贯</th>
                 <th>班级</th>
+                <th>送生区</th>
                 <th>照片</th>
                 <th></th>
               </tr>
@@ -475,6 +483,14 @@ function StudentsPage({ projectId, className, onStatus }: { projectId: number; c
                       value={className}
                       readOnly
                     />
+                  </td>
+                  <td>
+                    <input aria-label={`${student.name} 送生区`} key={`area-${student.id}-${student.source_area}`}
+                      defaultValue={student.source_area} onBlur={(event) => {
+                        if (event.currentTarget.value !== student.source_area) {
+                          patchMutation.mutate({ student, patch: { source_area: event.currentTarget.value } });
+                        }
+                      }} />
                   </td>
                   <td>
                     <div className="photo-cell">
@@ -513,7 +529,7 @@ function StudentsPage({ projectId, className, onStatus }: { projectId: number; c
               ))}
               {!students.length && (
                 <tr>
-                  <td colSpan={6} className="empty-cell">
+                  <td colSpan={7} className="empty-cell">
                     暂无学生
                   </td>
                 </tr>
@@ -1263,7 +1279,7 @@ function DormsPage({ projectId, onStatus }: { projectId: number; onStatus: (valu
                 onClick={() => assignStudentToNextBed(student)}
               >
                 <span>{student.name}</span>
-                <small>{student.hometown || "未填写"}</small>
+                <small>{[student.hometown, student.source_area].filter(Boolean).join(" · ") || "未填写"}</small>
               </button>
             ))}
             {!unassignedStudents.length && <div className="empty-mini">学生已全部安排</div>}
@@ -1335,7 +1351,7 @@ function DormsPage({ projectId, onStatus }: { projectId: number; onStatus: (valu
                         const isAssignedElsewhere = isStudentAssignedElsewhere(assignedStudentIds, bed, studentId);
                         return (
                           <option key={student.id} value={studentId} disabled={isAssignedElsewhere} className={isAssignedElsewhere ? "assigned-student-option" : ""}>
-                            {dormStudentOptionLabel(student.name, student.hometown, isAssignedElsewhere)}
+                            {dormStudentOptionLabel(student.name, [student.hometown, student.source_area].filter(Boolean).join(" / "), isAssignedElsewhere)}
                           </option>
                         );
                       })}
@@ -1383,7 +1399,7 @@ function StickersPage({ projectId, onStatus }: { projectId: number; onStatus: (v
     onError: (error) => onStatus(error.message)
   });
   const patchMutation = useMutation({
-    mutationFn: ({ student, patch }: { student: Student; patch: Partial<Pick<Student, "name" | "hometown" | "class_name">> }) =>
+    mutationFn: ({ student, patch }: { student: Student; patch: Partial<Pick<Student, "name" | "hometown" | "class_name" | "source_area">> }) =>
       api.patchStudent(projectId, student.id, patch),
     onSuccess: (student) => {
       queryClient.invalidateQueries({ queryKey: ["students", projectId] });
@@ -1417,7 +1433,7 @@ function StickersPage({ projectId, onStatus }: { projectId: number; onStatus: (v
       current.includes(studentId) ? current.filter((item) => item !== studentId) : [...current, studentId]
     );
   }
-  function updateStudentField(student: Student, field: "name" | "hometown" | "class_name", value: string) {
+  function updateStudentField(student: Student, field: "name" | "hometown" | "class_name" | "source_area", value: string) {
     const nextValue = value.trim();
     if (nextValue === student[field]) return;
     if (field === "class_name") {
@@ -1474,7 +1490,7 @@ function StickersPage({ projectId, onStatus }: { projectId: number; onStatus: (v
         <div className="panel-heading sticker-preview-heading">
           <div>
             <h2>{previewKind === "door" ? "宿舍门牌贴预览" : "床柜贴预览"}</h2>
-            <p>{previewKind === "door" ? "包含照片、姓名、籍贯、班级" : "紧凑贴纸，适合床柜标签"}</p>
+            <p>{previewKind === "door" ? "包含照片、姓名、籍贯、班级、送生区" : "紧凑贴纸，适合床柜标签"}</p>
           </div>
           <div className="actions">
             <button className="primary-action" disabled={!selectedIds.length || exportMutation.isPending} onClick={() => exportMutation.mutate(previewKind)}>
@@ -1541,6 +1557,11 @@ function StickersPage({ projectId, onStatus }: { projectId: number; onStatus: (v
                     />
                   </label>
                 )}
+                <label>
+                  <span>送生区：</span>
+                  <input key={`sticker-area-${student.id}-${student.source_area}`} defaultValue={student.source_area}
+                    placeholder="未填写" onBlur={(event) => updateStudentField(student, "source_area", event.currentTarget.value)} />
+                </label>
               </div>
             </article>
             );
@@ -1977,7 +1998,7 @@ function PhotosPage({
           {selectedStudent && (
             <div className="selected-student-card">
               <strong>{formatPhotoSequenceNumber(selectedStudent.index)}号 · {selectedStudent.name}</strong>
-              <span>{selectedStudent.hometown || "未填写籍贯"}</span>
+              <span>{selectedStudent.hometown || "未填写籍贯"} · 送生区：{selectedStudent.source_area || "未填写"}</span>
               <span>{selectedStudent.photo_url ? "已有照片，绑定后会替换" : "尚未绑定照片"}</span>
             </div>
           )}
@@ -2263,7 +2284,8 @@ function PhotosPage({
   );
 }
 
-export default function App() {
+function Workspace({ user, logout, changePassword }: { user: User; logout: () => void; changePassword: () => void }) {
+  const [showAccounts, setShowAccounts] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("students");
   const [status, setStatus] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -2359,16 +2381,20 @@ export default function App() {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
-              <button key={tab.key} className={activeTab === tab.key ? "active" : ""} onClick={() => setActiveTab(tab.key)}>
+              <button key={tab.key} className={activeTab === tab.key ? "active" : ""} onClick={() => { setShowAccounts(false); setActiveTab(tab.key); }}>
                 <Icon size={17} />
                 {tab.label}
               </button>
             );
           })}
+          {user.role === "admin" && <button className={showAccounts ? "active" : ""} onClick={() => setShowAccounts(true)}>账号管理</button>}
+          <span className="account-identity">{user.display_name || user.username} · {user.role === "admin" ? "管理员" : "普通用户"}</span>
+          <button onClick={changePassword}>修改密码</button>
+          <button onClick={logout}>退出登录</button>
         </nav>
       </header>
       <StatusLine text={status} />
-      {project && (
+      {!showAccounts && project && (
         <ActivityPanel
           activities={activitiesQuery.data ?? []}
           isLoading={activitiesQuery.isLoading}
@@ -2376,7 +2402,7 @@ export default function App() {
           onResumeBlueBackgroundJob={resumeBlueBackgroundJob}
         />
       )}
-      {project ? (
+      {showAccounts && user.role === "admin" ? <AccountsPage /> : project ? (
         <>
           {activeTab === "students" && <StudentsPage projectId={project.id} className={project.name} onStatus={reportStatus} />}
           {activeTab === "seats" && <SeatsPage projectId={project.id} onStatus={reportStatus} />}
@@ -2396,4 +2422,8 @@ export default function App() {
       )}
     </main>
   );
+}
+
+export default function App() {
+  return <AuthGate>{(actions) => <Workspace key={actions.user.id} {...actions} />}</AuthGate>;
 }

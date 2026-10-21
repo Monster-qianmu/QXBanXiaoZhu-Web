@@ -1872,3 +1872,25 @@ a.photo-import-thumb:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 32px 16px; background: #eef2f6; }
+.auth-card { width: min(440px, 100%); padding: 32px; background: white; border: 1px solid #d7dde8; border-radius: 16px; box-shadow: 0 12px 48px #1720330c; }
+.auth-brand { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: #e4edfc; color: #275da4; font-weight: 800; }
+.auth-card h1 { margin: 20px 0 8px; font-size: 26px; }
+.auth-card p, .auth-card small, .account-hint { color: #64748b; line-height: 1.7; }
+.auth-card form { display: grid; gap: 16px; margin: 24px 0; }
+.auth-card label, .account-add-form label { display: grid; gap: 7px; font-size: 14px; }
+.auth-card input, .account-add-form input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; }
+.auth-error { color: #b42318; padding: 12px; background: #fff1f0; border-radius: 6px; line-height: 1.6; }
+.account-identity { display: inline-flex; align-items: center; padding: 0 8px; font-size: 13px; color: #64748b; }
+.accounts-panel { margin-top: 18px; }
+.account-add-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: end; gap: 12px; padding: 20px 0; }
+.accounts-panel a.text-button, .accounts-panel label.text-button { padding: 8px 12px; text-decoration: none; cursor: pointer; }
+.accounts-panel input[type=file] { display: none; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #0f172a66; padding: 20px; }
+.manual-add-form { grid-template-columns: repeat(4, minmax(100px, 1fr)) auto; }
+.sticker-preview-card .sticker-lines { gap: 4px; }
+.sticker-preview-card .sticker-lines label { font-size: 14px; grid-template-columns: 64px minmax(0, 1fr); }
+.sticker-preview-card .sticker-lines label span { min-width: 64px; }
+@media (max-width: 900px) { .topbar { flex-wrap: wrap; } .account-add-form, .manual-add-form { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .account-add-form, .manual-add-form { grid-template-columns: 1fr; } .brand-block { min-width: 0; width: 100%; } }

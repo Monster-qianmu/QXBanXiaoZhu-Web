@@ -3,7 +3,7 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-from fastapi.testclient import TestClient
+from tests.client_helpers import authenticated_client
 from openpyxl import Workbook, load_workbook
 from PIL import Image
 
@@ -59,7 +59,7 @@ def test_backend_main_flow(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(backend_main, "photo_background_warmup_state", lambda: {"status": "ready", "error": ""})
     app = backend_main.app
 
-    with TestClient(app) as client:
+    with authenticated_client(app) as client:
         health_response = client.get("/api/v1/health")
         assert health_response.status_code == 200
         assert health_response.json()["photo_background_warmup_status"] == "ready"
@@ -474,7 +474,7 @@ def test_photo_import_suggests_student_by_sequence(tmp_path: Path, monkeypatch) 
 
     from backend.app.main import app
 
-    with TestClient(app) as client:
+    with authenticated_client(app) as client:
         project_response = client.post("/api/v1/projects", json={"name": "序号建议班"})
         assert project_response.status_code == 200
         project_id = project_response.json()["id"]

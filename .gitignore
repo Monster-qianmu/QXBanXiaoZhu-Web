@@ -65,3 +65,6 @@ resources/app_icon.ico
 resources/app_icon.png
 resources/学生籍贯信息表.PDF
 resources/班级座位表.pdf
+
+*.db-wal
+*.db-shm

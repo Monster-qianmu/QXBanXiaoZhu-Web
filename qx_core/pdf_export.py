@@ -192,14 +192,15 @@ def draw_sticker(c: canvas.Canvas, page_height: float, rect: Rect, student: Stud
 
     line_left = x + width * 0.14
     line_width = width * 0.72
-    line_gap = height * (0.075 if include_class else 0.07)
-    first_y = y + height * (1 - (0.745 if include_class else 0.76))
-    second_y = y + height * (1 - (0.845 if include_class else 0.88))
-    draw_text_line(c, "姓名：  ", student.name, line_left, first_y, line_width, line_gap)
-    draw_text_line(c, "籍贯：  ", student.hometown, line_left, second_y, line_width, line_gap)
+    line_gap = height * 0.058
+    lines = [("姓名：", student.name), ("籍贯：", student.hometown)]
     if include_class:
-        third_y = y + height * (1 - 0.945)
-        draw_text_line(c, "班级：  ", student.class_name, line_left, third_y, line_width, line_gap)
+        lines.append(("班级：", student.class_name))
+    lines.append(("送生区：", student.source_area))
+    first_y = y + height * 0.28
+    spacing = height * (0.071 if include_class else 0.10)
+    for index, (label, value) in enumerate(lines):
+        draw_text_line(c, label, value, line_left, first_y - index * spacing, line_width, line_gap)
 
 
 def export_stickers_pdf(path: Path, students: list[Student], sticker_kind: str = "door") -> None:

@@ -34,6 +34,7 @@ class StudentOut(BaseModel):
     index: int
     name: str
     hometown: str
+    source_area: str = ""
     class_name: str
     photo_match_status: str
     photo_url: str | None = None
@@ -42,12 +43,14 @@ class StudentOut(BaseModel):
 class StudentCreate(BaseModel):
     name: str
     hometown: str = ""
+    source_area: str = ""
     class_name: str = ""
 
 
 class StudentPatch(BaseModel):
     name: str | None = None
     hometown: str | None = None
+    source_area: str | None = None
     class_name: str | None = None
 
 

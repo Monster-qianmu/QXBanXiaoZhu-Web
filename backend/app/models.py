@@ -9,6 +9,7 @@ from sqlmodel import Field, SQLModel
 class ProjectRecord(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
+    owner_id: int | None = Field(default=None, index=True, foreign_key="userrecord.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -18,6 +19,7 @@ class StudentRecord(SQLModel, table=True):
     student_index: int
     name: str
     hometown: str = ""
+    source_area: str = ""
     class_name: str = ""
     photo_path: str = ""
     photo_match_status: str = "unmatched"
@@ -69,3 +71,20 @@ class PhotoBackgroundJobRecord(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     started_at: datetime | None = None
     completed_at: datetime | None = None
+
+
+class UserRecord(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True)
+    display_name: str = ""
+    password_hash: str
+    role: str = "user"
+    is_active: bool = True
+    must_change_password: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LoginSessionRecord(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    user_id: int = Field(index=True, foreign_key="userrecord.id")
+    expires_at: datetime

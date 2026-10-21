@@ -1,0 +1,4 @@
+FROM qxbanxiaozhu-local-backend:latest
+COPY qx_core /app/qx_core
+COPY backend /app/backend
+COPY resources /app/resources

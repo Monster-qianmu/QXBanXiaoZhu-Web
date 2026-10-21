@@ -19,6 +19,7 @@ export type Student = {
   index: number;
   name: string;
   hometown: string;
+  source_area: string;
   class_name: string;
   photo_match_status: string;
   photo_url?: string | null;
@@ -121,3 +122,13 @@ export type PhotoImportSummary = {
 };
 
 export type TabKey = "students" | "seats" | "dorms" | "stickers" | "photos";
+
+export type User = {
+  id: number;
+  username: string;
+  display_name: string;
+  role: "admin" | "user";
+  is_active: boolean;
+  must_change_password: boolean;
+  created_at: string;
+};
